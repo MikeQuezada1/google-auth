@@ -1,64 +1,15 @@
-import Google from "@auth/core/providers/google";
-import { Session } from "@nestjs/common";
-import { profile } from "console";
-import NextAuth from "next-auth";
-import { signInSchema } from "../auth/zod";
-import { ZodError } from "zod";
-import Credentials from "next-auth/providers/credentials";
-import { saltAndHashPassword } from "../auth/saltAndHashPassword";
-import Passkey from "next-auth/providers/passkey"
-import { PrismaAdapter } from "@auth/prisma-adapter" //Instal Prisma
-import { PrismaClient } from "@prisma/client" //Instal Primsa Client
+import NextAuth from "next-auth"
+import Google from "next-auth/providers/google"
 
-const prisma = new PrismaClient()
- 
-export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: PrismaAdapter(prisma),
-  experimental: { enableWebAuthn: true },
-  providers: [
-    Credentials({
-        credentials: {
-          email: {},
-          password: {},
-        },
-        authorize: async (credentials) => {
-          let user = null
 
-          const { email, password } = await signInSchema.parseAsync(credentials)
-   
-          const pwHash = saltAndHashPassword(credentials.password)
-   
-          user = await getUserFromDb(credentials.email, pwHash)
-   
-          if (!user) {
-            throw new Error("User not found.")
-          }
-          return user
-        },
-      }),
-    Google({
-        profile(profile){
-            console.log("Profile Google: ", profile);
-
-            return {
-                ...profile,
-                id: profile.sub,
-                role: userRole,
-            };
-        },
-        clientId: process.env.GOOGLE_ID,
-        clientSecret: process.env.GOOGLE_Secret,
-    }),
-    Passkey,
-  ],
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  providers: [Google],
   callbacks: {
-    async jwt({ token, user }) {
-        if (user) token.role = user.role;
-        return token; 
-    }
-    async session({ session, token }) {
-        if (session?.user) session.user.role = token.role;
-        return session;
+    async signIn({ account, profile }) {
+      if (account.provider === "google") {
+        return profile.email_verified && profile.email.endsWith("@example.com")
+      }
+      return true // Do different verification for other providers that don't have `email_verified`
     },
   },
-});
+})
