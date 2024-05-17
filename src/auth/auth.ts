@@ -1,16 +1,20 @@
 import Google from "@auth/core/providers/google";
 import { Session } from "@nestjs/common";
-import { profile } from "console";;
+import { profile } from "console";
 import NextAuth from "next-auth";
+import { signInSchema } from "../auth/zod";
+import { ZodError } from "zod";
 import Credentials from "next-auth/providers/credentials";
-import { saltAndHashPassword } from "@/utils/password";
+import { saltAndHashPassword } from "../auth/saltAndHashPassword";
 import Passkey from "next-auth/providers/passkey"
-import { PrismaAdapter } from "@auth/prisma-adapter"
-import { PrismaClient } from "@prisma/client"
+import { PrismaAdapter } from "@auth/prisma-adapter" //Instal Prisma
+import { PrismaClient } from "@prisma/client" //Instal Primsa Client
 
 const prisma = new PrismaClient()
  
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  adapter: PrismaAdapter(prisma),
+  experimental: { enableWebAuthn: true },
   providers: [
     Credentials({
         credentials: {
@@ -27,10 +31,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           user = await getUserFromDb(credentials.email, pwHash)
    
           if (!user) {
-           
             throw new Error("User not found.")
           }
-   
           return user
         },
       }),
@@ -49,8 +51,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
     Passkey,
   ],
-  adapter: PrismaAdapter(prisma),
-  experimental: { enableWebAuthn: true },
   callbacks: {
     async jwt({ token, user }) {
         if (user) token.role = user.role;

@@ -1,4 +1,4 @@
-import { signIn } from "../src/auth"
+import { signIn } from "./auth/auth"
  
 export function SignIn() {
   return (
